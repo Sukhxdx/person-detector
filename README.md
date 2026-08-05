@@ -4,6 +4,8 @@
 
 **Estimating the number of nearby people from BLE advertisements and Wi-Fi probe requests.**
 
+**[Live demo](https://person-detector-demo.onrender.com)** · [Submission document](docs/INTERNSHIP_SUBMISSION.md) · [Technical documentation](docs/TECHNICAL_DOCUMENTATION.md) · [Linux deployment](docs/DEPLOYMENT_LINUX.md)
+
 A Linux application written in C11 that passively listens for the radio traffic personal devices
 broadcast continuously, deduplicates observations across both protocols, and reports an occupancy
 estimate with a confidence interval. It never transmits, never associates with a device, and never
@@ -155,10 +157,19 @@ make test && make check-memory && make analyze-validation
 
 ## Hosted demo
 
-**Live demo:** `https://person-detector-demo.onrender.com` _(populate after deploying)_
+### → **[person-detector-demo.onrender.com](https://person-detector-demo.onrender.com)**
 
-A small FastAPI service in [`web/`](web/) runs the same estimation logic in Python and exposes it
-through a browser UI, so the algorithm can be demonstrated without a Linux box.
+> **First load can take up to a minute.** The demo runs on Render's free tier, which puts the
+> service to sleep when idle, so the initial request pays a cold start. Subsequent requests are
+> immediate. A slow first load is expected, not a fault.
+>
+> The hosted demo runs the **Python port** of the estimator (`web/estimator.py`), not the C binary.
+> The C application needs raw BLE and Wi-Fi sockets on physical radio hardware, which no PaaS
+> provides. Both implementations are asserted in CI to produce identical results for the sample
+> scenario, and the authoritative implementation is the C code in `src/`.
+
+A small FastAPI service in [`web/`](web/) exposes the estimation logic through a browser UI, so the
+algorithm can be demonstrated without a Linux box or any radio hardware.
 
 | Endpoint | Purpose |
 |----------|---------|
@@ -168,6 +179,14 @@ through a browser UI, so the algorithm can be demonstrated without a Linux box.
 | `POST /api/simulate` | Estimate from randomly generated devices |
 | `POST /api/estimate` | Estimate from a supplied device list |
 
+The hosted `/api/sample` response reproduces the worked example exactly — `estimate: 3.2`,
+`raw_device_count: 6`, `deduplicated_count: 4` — because it reads the same
+`validation/sample_traffic.jsonl` that `make replay` does:
+
+```bash
+curl -s https://person-detector-demo.onrender.com/api/sample
+```
+
 Run it locally:
 
 ```bash
@@ -175,20 +194,13 @@ pip install -r web/requirements.txt
 cd web && uvicorn main:app --reload --port 8000
 ```
 
-### Deploy to Render
+### Deploying your own copy
 
-1. Push this repository to GitHub.
+1. Fork or push this repository to GitHub.
 2. In the [Render dashboard](https://dashboard.render.com), choose **New → Blueprint**.
 3. Connect the repository. Render reads [`render.yaml`](render.yaml) and configures the service
    automatically — `rootDir: web`, free plan, health check on `/health`.
 4. Click **Apply**. The first build takes two to three minutes.
-5. Replace the demo URL above with the one Render assigns.
-
-> The C application itself cannot be hosted on Render, or any PaaS: it needs raw BLE and Wi-Fi
-> sockets on physical radio hardware. The web service is a deliberate Python port of
-> `src/core/estimator.c` so reviewers can interact with the algorithm in a browser. Both
-> implementations are asserted in CI to produce the same result for the sample scenario. The
-> authoritative implementation is the C code in `src/`.
 
 ---
 

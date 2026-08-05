@@ -8,7 +8,12 @@
 | **Language** | C11 |
 | **Platform** | Linux (Ubuntu 22.04+, kernel 4.x+) |
 | **Build** | CMake 3.14+ with Makefile wrapper |
-| **Repository** | [`person_detector/`](../) |
+| **Repository** | https://github.com/Sukhxdx/person-detector |
+| **Live demo** | https://person-detector-demo.onrender.com |
+
+The live demo runs the Python port of the estimator so the algorithm can be inspected in a browser
+without Linux or radio hardware; it is hosted on a free tier that sleeps when idle, so the first
+load may take up to a minute. The authoritative implementation is the C code in `src/`.
 
 ---
 
@@ -323,7 +328,13 @@ people against a true count of 3. Worked step by step, including the error contr
 beacon, in [TECHNICAL_DOCUMENTATION.md](TECHNICAL_DOCUMENTATION.md) Section 3.5.
 
 Both the C implementation (`make replay`) and the Python demo service (`/api/sample`) produce
-this identical line, which cross-checks the two independent implementations of the estimator.
+this identical line, which cross-checks the two independent implementations of the estimator. The
+agreement can be confirmed against the live deployment without building anything:
+
+```bash
+curl -s https://person-detector-demo.onrender.com/api/sample
+# → "estimate": 3.2, "raw_device_count": 6, "deduplicated_count": 4
+```
 
 ---
 
