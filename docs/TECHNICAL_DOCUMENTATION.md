@@ -301,8 +301,9 @@ intentionally left unpopulated until a real session is run — see
 | `test_same_protocol_not_deduplicated` | Same-protocol devices stay distinct |
 | `test_empty_aggregator_estimate` | Empty input yields a zero estimate, not UB |
 
-Expected output: `All tests passed`. `make check-memory` runs the same binary under Valgrind and
-must report zero leaks.
+Expected output: `All tests passed`. `make check-memory` runs the same suite under Valgrind and
+must report zero leaks. It builds a separate sanitizer-free binary to do so, because Valgrind and
+AddressSanitizer both remap large address ranges and cannot run against each other.
 
 ### 8.2 Tier 2 — Synthetic End-to-End Benchmark (reproducible)
 
