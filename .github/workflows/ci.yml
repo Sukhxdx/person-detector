@@ -67,12 +67,31 @@ jobs:
       - name: Valgrind memory check
         run: make check-memory
 
-      - name: Binary executes and exposes its CLI
+      # --help must succeed and write to stdout so it can be piped or paged;
+      # a bad argument must fail and write usage to stderr.
+      - name: Binary executes and honours its CLI contract
         run: |
-          ./build/person_detector --help
-          ./build/person_detector --help | grep -q -- '--rssi-cutoff'
-          ./build/person_detector --help | grep -q -- '--wifi-iface'
-          ./build/person_detector --help | grep -q -- '--replay'
+          ./build/person_detector --help > /tmp/help.txt 2> /tmp/help_err.txt
+          echo "--- help on stdout ---"
+          cat /tmp/help.txt
+
+          test -s /tmp/help.txt || { echo "FAIL: --help wrote nothing to stdout"; exit 1; }
+          test ! -s /tmp/help_err.txt || {
+            echo "FAIL: --help polluted stderr:"; cat /tmp/help_err.txt; exit 1; }
+
+          for opt in --ble-dev --wifi-iface --rssi-cutoff --window --interval \
+                     --ttl --json-out --replay --replay-loop --no-ble --no-wifi \
+                     --verbose --help; do
+            grep -q -- "$opt" /tmp/help.txt || { echo "FAIL: $opt missing from help"; exit 1; }
+          done
+
+          if ./build/person_detector --not-a-real-option > /tmp/bad.txt 2> /tmp/bad_err.txt; then
+            echo "FAIL: unknown option exited 0"; exit 1
+          fi
+          grep -q 'Usage:' /tmp/bad_err.txt || {
+            echo "FAIL: no usage on stderr for a bad option"; exit 1; }
+
+          echo "CLI contract satisfied"
 
       # Replay mode drives the real aggregator and estimator from recorded
       # traffic, so the end-to-end pipeline is exercised without radios. A

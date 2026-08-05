@@ -46,9 +46,11 @@ static void install_signal_handlers(void)
     (void)sigaction(SIGTERM, &sa, NULL);
 }
 
-static void print_usage(const char *prog)
+/* Usage requested with --help goes to stdout so it can be piped or paged;
+   usage shown because the arguments were wrong goes to stderr. */
+static void print_usage(FILE *stream, const char *prog)
 {
-    (void)fprintf(stderr,
+    (void)fprintf(stream,
                   "Usage: %s [OPTIONS]\n"
                   "\n"
                   "Estimate nearby human count using BLE and Wi-Fi passive sensing.\n"
@@ -153,10 +155,10 @@ static int parse_arguments(int argc, char **argv, pd_config_t *cfg)
             cfg->verbose = true;
             break;
         case 'h':
-            print_usage(argv[0]);
+            print_usage(stdout, argv[0]);
             return 1;
         default:
-            print_usage(argv[0]);
+            print_usage(stderr, argv[0]);
             return -1;
         }
     }
