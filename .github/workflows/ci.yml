@@ -75,36 +75,42 @@ jobs:
           ./build/person_detector --help | grep -q -- '--replay'
 
       # Replay mode drives the real aggregator and estimator from recorded
-      # traffic, so the end-to-end pipeline is exercised without radios.
+      # traffic, so the end-to-end pipeline is exercised without radios. A
+      # finite replay must terminate on its own with status 0; hanging or
+      # crashing here is a genuine failure, so the exit code is not masked.
       - name: Replay-mode end-to-end run
         run: |
-          timeout 20 ./build/person_detector \
+          timeout 60 ./build/person_detector \
             --replay validation/sample_traffic.jsonl \
             --interval 2 \
             --json-out /tmp/ci_metrics.jsonl \
-            --verbose || true
+            --verbose
 
-          test -s /tmp/ci_metrics.jsonl || { echo "No telemetry produced"; exit 1; }
           echo "--- telemetry ---"
           cat /tmp/ci_metrics.jsonl
 
           python3 - <<'PY'
           import json
           rows = [json.loads(l) for l in open('/tmp/ci_metrics.jsonl') if l.strip()]
-          assert rows, "no JSON records"
+          assert rows, "no JSON records emitted"
           last = rows[-1]
+          assert last['raw_devices'] == 6, last
           assert last['deduplicated_devices'] == 4, last
           assert abs(last['estimate'] - 3.2) < 1e-6, last
-          assert last['raw_devices'] == 6, last
-          print("replay telemetry matches documented example:", last)
+          assert last['lower_bound'] <= last['estimate'] <= last['upper_bound'], last
+          print("replay telemetry matches the documented worked example:", last)
           PY
 
-      # Sanitizers are only meaningful if the instrumented binary also runs.
-      - name: Replay under AddressSanitizer
+      # Sanitizers only prove anything if the instrumented binary actually runs.
+      # ASan and UBSan abort on error, so a zero exit status is the assertion.
+      - name: Replay under AddressSanitizer and UBSan
+        env:
+          ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
         run: |
-          timeout 20 ./build-debug/person_detector \
+          timeout 60 ./build-debug/person_detector \
             --replay validation/sample_traffic.jsonl \
-            --interval 2 || true
+            --interval 2
 
   validation:
     name: Validation analysis

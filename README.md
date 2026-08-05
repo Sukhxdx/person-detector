@@ -1,6 +1,6 @@
 # person_detector
 
-[![CI](https://github.com/SUKHADA_GITHUB_USERNAME/person-detector/actions/workflows/ci.yml/badge.svg)](https://github.com/SUKHADA_GITHUB_USERNAME/person-detector/actions/workflows/ci.yml)
+[![CI](https://github.com/Sukhxdx/person-detector/actions/workflows/ci.yml/badge.svg)](https://github.com/Sukhxdx/person-detector/actions/workflows/ci.yml)
 
 **Estimating the number of nearby people from BLE advertisements and Wi-Fi probe requests.**
 
@@ -106,8 +106,8 @@ Step-by-step setup, capability configuration, systemd installation, and a troubl
 | `--interval SEC` | Seconds between estimates | `5` |
 | `--ttl SEC` | How long a device stays counted after last seen | `60` |
 | `--json-out PATH` | Append JSONL telemetry to a file | disabled |
-| `--replay PATH` | Replay a JSONL traffic file instead of live capture | disabled |
-| `--replay-loop` | Loop the replay file continuously | off |
+| `--replay PATH` | Replay a JSONL traffic file instead of live capture; reports a final estimate and exits once the recording is consumed | disabled |
+| `--replay-loop` | Loop the replay file continuously instead of exiting; stop with Ctrl+C | off |
 | `--no-ble` / `--no-wifi` | Disable one protocol | both enabled |
 | `--verbose` | Debug logging | off |
 | `--help` | Usage | — |

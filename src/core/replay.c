@@ -160,8 +160,14 @@ static void *replay_feeder_thread(void *arg)
         (void)fclose(fp);
     } while (feeder->running && feeder->loop);
 
+    feeder->finished = true;
     LOG_INFO("Replay feeder exiting");
     return NULL;
+}
+
+bool replay_feeder_is_finished(const replay_feeder_t *feeder)
+{
+    return (feeder != NULL) && feeder->finished;
 }
 
 int replay_feeder_init(replay_feeder_t *feeder, const char *path, pd_aggregator_t *agg, bool loop)

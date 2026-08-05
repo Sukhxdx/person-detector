@@ -16,6 +16,7 @@
 #include <net/if.h>
 #include <poll.h>
 #include <pthread.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -81,22 +82,28 @@ static int parse_radiotap_rssi(const uint8_t *frame, size_t len, int8_t *rssi_ou
         return -1;
     }
 
-    const struct ieee80211_radiotap_header *hdr =
-        (const struct ieee80211_radiotap_header *)frame;
-
+    /* Read through byte offsets rather than a struct pointer: the header is
+       packed, so taking the address of a member would trip
+       -Waddress-of-packed-member and the frame buffer has no alignment
+       guarantee to begin with. */
     uint16_t radiotap_len_raw;
-    memcpy(&radiotap_len_raw, &hdr->it_len, sizeof(radiotap_len_raw));
+    memcpy(&radiotap_len_raw,
+           frame + offsetof(struct ieee80211_radiotap_header, it_len),
+           sizeof(radiotap_len_raw));
     size_t radiotap_len = (size_t)le16toh(radiotap_len_raw);
 
-    if (radiotap_len > len || radiotap_len < sizeof(*hdr)) {
+    if (radiotap_len > len ||
+        radiotap_len < sizeof(struct ieee80211_radiotap_header)) {
         return -1;
     }
 
     uint32_t present_raw;
-    memcpy(&present_raw, &hdr->it_present, sizeof(present_raw));
+    memcpy(&present_raw,
+           frame + offsetof(struct ieee80211_radiotap_header, it_present),
+           sizeof(present_raw));
     uint32_t first_present = le32toh(present_raw);
 
-    size_t offset = sizeof(*hdr);
+    size_t offset = sizeof(struct ieee80211_radiotap_header);
 
     /* Bit 31 chains additional presence words in front of the field data. */
     uint32_t chain = first_present;

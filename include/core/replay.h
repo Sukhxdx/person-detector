@@ -9,6 +9,7 @@ typedef struct {
     char              path[PD_REPLAY_PATH_MAX];
     pd_aggregator_t  *aggregator;
     volatile bool     running;
+    volatile bool     finished;
     bool              loop;
     pthread_t         thread;
 } replay_feeder_t;
@@ -17,5 +18,9 @@ int  replay_feeder_init(replay_feeder_t *feeder, const char *path, pd_aggregator
 int  replay_feeder_start(replay_feeder_t *feeder);
 void replay_feeder_stop(replay_feeder_t *feeder);
 void replay_feeder_destroy(replay_feeder_t *feeder);
+
+/* True once the feeder thread has consumed the whole recording. Only ever
+   becomes true for a non-looping feeder. */
+bool replay_feeder_is_finished(const replay_feeder_t *feeder);
 
 #endif /* PERSON_DETECTOR_REPLAY_H */

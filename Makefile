@@ -2,6 +2,7 @@
 
 BUILD_DIR       := build
 DEBUG_DIR       := build-debug
+VALGRIND_DIR    := build-valgrind
 CMAKE           := cmake
 CMAKE_FLAGS     := -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 NPROC           := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
@@ -26,13 +27,18 @@ test: debug
 	$(CMAKE) --build $(DEBUG_DIR) --target $(TEST_TARGET) --parallel $(NPROC)
 	$(DEBUG_DIR)/$(TEST_TARGET)
 
-check-memory: debug
+# Valgrind cannot run against an AddressSanitizer-instrumented binary: the two
+# tools both remap large address ranges and abort. This target therefore builds
+# its own sanitizer-free binary with debug symbols instead of reusing `debug`.
+check-memory:
 	@command -v valgrind >/dev/null 2>&1 || { echo "valgrind not installed"; exit 1; }
-	valgrind --leak-check=full --show-leak-kinds=all --error-exitcode=1 \
-		$(DEBUG_DIR)/$(TEST_TARGET)
+	$(CMAKE) -S . -B $(VALGRIND_DIR) $(CMAKE_FLAGS) -DCMAKE_BUILD_TYPE=RelWithDebInfo
+	$(CMAKE) --build $(VALGRIND_DIR) --target $(TEST_TARGET) --parallel $(NPROC)
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
+		--error-exitcode=1 $(VALGRIND_DIR)/$(TEST_TARGET)
 
 clean:
-	rm -rf $(BUILD_DIR) $(DEBUG_DIR)
+	rm -rf $(BUILD_DIR) $(DEBUG_DIR) $(VALGRIND_DIR)
 
 format:
 	@command -v clang-format >/dev/null 2>&1 || { echo "clang-format not installed"; exit 1; }

@@ -312,6 +312,15 @@ int main(int argc, char **argv)
         }
 
         (void)run_estimation_cycle(&cfg);
+
+        /* A non-looping replay is a finite job. Once the recording is consumed
+           there is nothing further to observe, so report the final interval and
+           exit instead of idling until the operator interrupts. */
+        if (cfg.replay_mode && !cfg.replay_loop &&
+            replay_feeder_is_finished(&g_replay_feeder)) {
+            LOG_INFO("Replay complete; no further traffic to process");
+            break;
+        }
     }
 
     LOG_INFO("Shutting down person_detector");

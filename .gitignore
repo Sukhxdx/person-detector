@@ -1,6 +1,7 @@
 # Build outputs
 build/
 build-debug/
+build-valgrind/
 compile_commands.json
 *.o
 *.a
