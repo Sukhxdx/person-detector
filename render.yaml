@@ -1,0 +1,20 @@
+# Render Blueprint for the person_detector browser demo.
+#
+# This deploys the Python port of the estimator (web/), NOT the C application.
+# The C binary needs raw BLE and Wi-Fi sockets on physical radio hardware, which
+# no PaaS provides. The demo lets reviewers exercise the same estimation logic
+# (log-distance filtering, cross-protocol deduplication, Poisson bounds) from a
+# browser; the authoritative implementation remains the C code in src/.
+
+services:
+  - type: web
+    name: person-detector-demo
+    runtime: python
+    plan: free
+    rootDir: web
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"

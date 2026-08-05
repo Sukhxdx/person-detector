@@ -1,0 +1,17 @@
+# Build outputs
+build/
+build-debug/
+compile_commands.json
+*.o
+*.a
+*.so
+
+# Validation run artifacts
+validation/output/
+validation/results_summary.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/

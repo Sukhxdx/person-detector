@@ -1,0 +1,21 @@
+timestamp,actual_people_count,location,notes
+1722700800,3,lobby-A,manual count at interval start
+1722700805,3,lobby-A,stable occupancy
+1722700810,4,lobby-A,one person entered
+1722700815,4,lobby-A,stable occupancy
+1722700820,3,lobby-A,one person left
+1722700825,2,lobby-A,low traffic period
+1722700830,2,lobby-A,stable occupancy
+1722700835,3,lobby-A,one person entered
+1722700840,5,lobby-A,small group entered
+1722700845,5,lobby-A,stable occupancy
+1722700850,4,lobby-A,one person left
+1722700855,4,lobby-A,stable occupancy
+1722700860,3,lobby-A,end of session
+1722700865,6,lobby-B,peak lunch hour
+1722700870,6,lobby-B,stable occupancy
+1722700875,5,lobby-B,one person left
+1722700880,5,lobby-B,stable occupancy
+1722700885,4,lobby-B,one person left
+1722700890,4,lobby-B,stable occupancy
+1722700895,3,lobby-B,low traffic

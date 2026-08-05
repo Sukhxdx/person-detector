@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Person Detector — BLE + Wi-Fi Demo</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #e2e8f0;
+      --accent: #38bdf8;
+      --green: #4ade80;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.75rem; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 2rem; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+    @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 1.25rem;
+      border: 1px solid #334155;
+    }
+    .metric { font-size: 2.5rem; font-weight: 700; color: var(--accent); }
+    .label { color: var(--muted); font-size: 0.875rem; margin-top: 0.25rem; }
+    button {
+      background: var(--accent);
+      color: #0f172a;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    button:hover { opacity: 0.9; }
+    pre {
+      background: #0b1220;
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.8rem;
+      margin-top: 1rem;
+      max-height: 320px;
+    }
+    .badge {
+      display: inline-block;
+      background: #334155;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      margin-right: 0.5rem;
+    }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Person Detector</h1>
+    <p class="subtitle">
+      Nearby person estimation using BLE advertisements &amp; Wi-Fi probe requests.
+      <span class="badge">Internship Demo</span>
+      <span class="badge">C + Python API</span>
+    </p>
+
+    <div class="grid">
+      <div class="card">
+        <div class="metric" id="estimate">—</div>
+        <div class="label">Estimated People</div>
+      </div>
+      <div class="card">
+        <div class="metric" id="confidence">—</div>
+        <div class="label">95% Confidence Interval</div>
+      </div>
+      <div class="card">
+        <div class="metric" id="devices">—</div>
+        <div class="label">Raw Devices (after RSSI filter)</div>
+      </div>
+      <div class="card">
+        <div class="metric" id="dedup">—</div>
+        <div class="label">Deduplicated Clusters</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <button onclick="runSimulate()">Simulate Random Traffic</button>
+      <button onclick="runSample()">Load Sample Data</button>
+      <p style="margin-top:0.75rem;color:var(--muted);font-size:0.875rem;">
+        Live C binary requires Linux + BLE/Wi-Fi hardware.
+        This web demo runs the same estimator algorithm in Python on Render.
+        <a href="https://github.com/Sukhxdx/medguard-ai/tree/main/person_detector" target="_blank">View source on GitHub</a>
+      </p>
+      <pre id="output">Click a button to run estimation...</pre>
+    </div>
+  </div>
+
+  <script>
+    function renderResult(data) {
+      document.getElementById('estimate').textContent = data.estimate.toFixed(2);
+      document.getElementById('confidence').textContent =
+        `[${data.lower_bound.toFixed(2)}, ${data.upper_bound.toFixed(2)}]`;
+      document.getElementById('devices').textContent = data.raw_device_count;
+      document.getElementById('dedup').textContent = data.deduplicated_count;
+      document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function runSimulate() {
+      const res = await fetch('/api/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count: 10, seed: Date.now() % 10000 }),
+      });
+      renderResult(await res.json());
+    }
+
+    async function runSample() {
+      const res = await fetch('/api/sample');
+      renderResult(await res.json());
+    }
+
+    runSample();
+  </script>
+</body>
+</html>

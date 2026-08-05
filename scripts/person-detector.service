@@ -1,0 +1,34 @@
+[Unit]
+Description=Person Detector - BLE/Wi-Fi Passive Occupancy Estimation
+Documentation=file:///usr/share/doc/person_detector/TECHNICAL_DOCUMENTATION.md
+After=network.target bluetooth.service
+Wants=bluetooth.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/local/bin/person_detector \
+    --ble-dev hci0 \
+    --wifi-iface wlan0mon \
+    --rssi-cutoff -85 \
+    --window 500 \
+    --interval 5 \
+    --ttl 60 \
+    --json-out /var/log/person_detector/metrics.jsonl
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=person_detector
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/person_detector
+PrivateTmp=true
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

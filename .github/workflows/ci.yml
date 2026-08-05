@@ -1,0 +1,166 @@
+name: CI
+
+# What this pipeline can and cannot verify
+# ----------------------------------------
+# CAN:    compile every module — including src/ble/ble_scanner.c and
+#         src/wifi/wifi_scanner.c, which depend on BlueZ and AF_PACKET — under
+#         the full strict warning set with -Werror; run the unit suite under
+#         AddressSanitizer/UBSan; run Valgrind; and execute the real binary in
+#         replay mode against recorded traffic.
+# CANNOT: perform live BLE or Wi-Fi capture. GitHub runners have no Bluetooth
+#         adapter and no monitor-mode-capable Wi-Fi interface, and raw sockets
+#         need CAP_NET_RAW. Radio capture must be validated on real hardware,
+#         following docs/VALIDATION_REPORT.md.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  linux-build:
+    name: Linux build, test and memory check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build and radio dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            pkg-config \
+            libbluetooth-dev \
+            libnl-3-dev \
+            libnl-genl-3-dev \
+            valgrind
+
+      - name: Show toolchain versions
+        run: |
+          gcc --version | head -1
+          cmake --version | head -1
+          pkg-config --modversion bluez || true
+
+      # Builds the complete person_detector binary, which links ble_scanner.c
+      # and wifi_scanner.c against libbluetooth. This is the step that proves
+      # the radio modules actually compile on Linux.
+      - name: Release build (full binary, strict warnings as errors)
+        run: make build
+
+      - name: Confirm strict flags were active
+        run: |
+          grep -q '\-Werror' CMakeLists.txt
+          grep -q '\-Wconversion' CMakeLists.txt
+          grep -q '\-Wstrict-prototypes' CMakeLists.txt
+          grep -q '\-Wmissing-prototypes' CMakeLists.txt
+          echo "Strict warning set present in build configuration"
+
+      - name: Debug build (AddressSanitizer + UBSan)
+        run: make debug
+
+      - name: Unit tests
+        run: make test
+
+      - name: Valgrind memory check
+        run: make check-memory
+
+      - name: Binary executes and exposes its CLI
+        run: |
+          ./build/person_detector --help
+          ./build/person_detector --help | grep -q -- '--rssi-cutoff'
+          ./build/person_detector --help | grep -q -- '--wifi-iface'
+          ./build/person_detector --help | grep -q -- '--replay'
+
+      # Replay mode drives the real aggregator and estimator from recorded
+      # traffic, so the end-to-end pipeline is exercised without radios.
+      - name: Replay-mode end-to-end run
+        run: |
+          timeout 20 ./build/person_detector \
+            --replay validation/sample_traffic.jsonl \
+            --interval 2 \
+            --json-out /tmp/ci_metrics.jsonl \
+            --verbose || true
+
+          test -s /tmp/ci_metrics.jsonl || { echo "No telemetry produced"; exit 1; }
+          echo "--- telemetry ---"
+          cat /tmp/ci_metrics.jsonl
+
+          python3 - <<'PY'
+          import json
+          rows = [json.loads(l) for l in open('/tmp/ci_metrics.jsonl') if l.strip()]
+          assert rows, "no JSON records"
+          last = rows[-1]
+          assert last['deduplicated_devices'] == 4, last
+          assert abs(last['estimate'] - 3.2) < 1e-6, last
+          assert last['raw_devices'] == 6, last
+          print("replay telemetry matches documented example:", last)
+          PY
+
+      # Sanitizers are only meaningful if the instrumented binary also runs.
+      - name: Replay under AddressSanitizer
+        run: |
+          timeout 20 ./build-debug/person_detector \
+            --replay validation/sample_traffic.jsonl \
+            --interval 2 || true
+
+  validation:
+    name: Validation analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Synthetic pipeline benchmark
+        run: |
+          python3 validation/analyze_results.py \
+            --estimates validation/sample_estimates.jsonl \
+            --ground-truth validation/ground_truth_template.csv \
+            --output /tmp/results_summary.md
+          cat /tmp/results_summary.md
+
+      - name: Traffic simulator
+        run: python3 scripts/simulate_traffic.py --count 5 --duration 2 --interval 1
+
+  demo-api:
+    name: Demo API (Render deployment target)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install demo dependencies
+        run: |
+          pip install -r web/requirements.txt
+          pip install httpx
+
+      - name: Exercise endpoints
+        working-directory: web
+        run: |
+          python - <<'PY'
+          from fastapi.testclient import TestClient
+          import main
+
+          c = TestClient(main.app)
+          assert c.get('/health').json()['status'] == 'ok'
+          assert c.get('/').status_code == 200
+
+          s = c.get('/api/sample').json()
+          assert s['raw_device_count'] == 6, s
+          assert s['deduplicated_count'] == 4, s
+          assert abs(s['estimate'] - 3.2) < 1e-6, s
+
+          assert c.post('/api/simulate', json={'count': 8, 'seed': 1}).status_code == 200
+          assert c.post('/api/estimate', json={'devices': []}).json()['estimate'] == 0.0
+          print('demo API OK; C and Python estimators agree on the sample scenario')
+          PY
