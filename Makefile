@@ -1,4 +1,7 @@
-.PHONY: all build debug test check-memory clean format install dirs validate analyze-validation demo replay
+# `web` and `install` collide with real paths in the tree, so declaring every
+# target phony is required for them to run at all.
+.PHONY: all build debug test check-memory clean format install dirs validate \
+        analyze-validation demo replay run simulate web
 
 BUILD_DIR       := build
 DEBUG_DIR       := build-debug

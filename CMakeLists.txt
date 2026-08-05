@@ -33,7 +33,15 @@ set(PD_SCANNER_SOURCES
 )
 
 find_package(Threads REQUIRED)
-find_library(MATH_LIBRARY m REQUIRED)
+
+# find_library(... REQUIRED) needs CMake 3.18, above this project's floor, and
+# libm is bundled into libc on some toolchains where the search legitimately
+# fails. Fall back to the linker's own resolution rather than aborting.
+find_library(MATH_LIBRARY m)
+if(NOT MATH_LIBRARY)
+    set(MATH_LIBRARY m)
+endif()
+
 find_library(BLUETOOTH_LIBRARY bluetooth)
 find_library(NL3_LIBRARY nl-3)
 find_library(NL_GENL3_LIBRARY nl-genl-3)
